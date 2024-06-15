@@ -82,6 +82,9 @@ def upload_success():
         print(e)
         return render_template('error.html')
 
+
+
+
 @app.route('/easyocr_detection')
 def easyocr_detection():
     try:
