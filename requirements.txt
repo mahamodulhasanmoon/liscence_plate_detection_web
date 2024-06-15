@@ -16,3 +16,4 @@ PyYAML
 Shapely
 pyclipper 
 ninja
+gunicorn
