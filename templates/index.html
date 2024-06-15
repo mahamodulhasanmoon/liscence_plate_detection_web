@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Upload Image</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <style>
+        #video-preview {
+            width: 100%;
+            height: auto;
+        }
+
+        .upload-img {
+            width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="row">
+            <div class="col-md-4"></div>
+            <div class="col-md-4 mt-5 pt-5">
+                <div class="wrapper mt-5 bg-secondary p-4 rounded">
+                
+                    <div>
+                        <video id="video-preview" autoplay></video>
+                    </div>
+
+                    <button type="button" onclick="captureImage()" class="btn btn-primary">Save Live image</button>
+                
+                    <form id="upload-form" method="POST" enctype="multipart/form-data" style="display: none;"
+                        action="/upload">
+                        <input type="hidden" name="image" id="image_data">
+                        <input type="submit" value="Upload" class="btn btn-danger my-1 mx-auto">
+                    </form>
+
+                    <div class="my-3">
+                        {% if filepath %}
+                        <img class="upload-img" src="/static/uploads/input.jpg" alt="">
+                        <div class="d-flex justify-content-between">
+                            <form id="delete-form" method="post" action="/delete_image">
+                                <input type="hidden" name="image_name" value="input.jpg">
+                                <button id="delete-button" type="submit" class="btn btn-danger mt-2">Delete
+                                    Image</button>
+                            </form>
+                            <form method="POST" action="/detection">
+                                <input id="detect" type="submit" value="Detection" class="btn btn-primary my-1 mx-auto">
+                            </form>
+                        </div>
+                        <div id="result-container"></div>
+                        {% endif %}
+                    </div>
+
+                    <div class="my-3">
+                        {% if result %}
+                        <h2>{{ result }}</h2>
+                        <img src="/static/uploads/processed.jpg" alt="">
+                        {% endif %}
+                    </div>
+
+                </div>
+            </div>
+            <div class="col-md-4"></div>
+        </div>
+    </div>
+
+    <script>
+        // Function to check if the image exists
+        function checkImageExists(imageUrl, callback) {
+            var img = new Image();
+            img.onload = function () {
+                callback(true);
+            };
+            img.onerror = function () {
+                callback(false);
+            };
+            img.src = imageUrl;
+        }
+
+        // Hide the delete button if the image doesn't exist
+        window.onload = function () {
+            var imageUrl = "/static/uploads/input.jpg";
+            checkImageExists(imageUrl, function (exists) {
+                var deleteForm = document.getElementById('delete-form');
+                var detectButton = document.getElementById('detect');
+                if (!exists) {
+                    deleteForm.style.display = 'none';
+                    detectButton.style.display = 'none';
+                }
+            });
+        };
+
+
+        const videoElement = document.getElementById('video-preview');
+
+        // Function to check if the browser supports getUserMedia
+        function hasGetUserMedia() {
+            return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+        }
+
+        if (hasGetUserMedia()) {
+            // Access the camera stream and display it in the video element
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then((stream) => {
+                    videoElement.srcObject = stream;
+                })
+                .catch((error) => {
+                    console.error('Error accessing camera: ', error);
+                    document.getElementById('error').innerText = 'Error accessing camera: ' + error;
+                });
+        } else {
+            console.error('getUserMedia is not supported');
+            document.getElementById('error').innerText = 'getUserMedia is not supported';
+        }
+
+        // Function to capture image
+        function captureImage() {
+            // Create a canvas element
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+
+            // Set canvas dimensions to match video feed
+            canvas.width = videoElement.videoWidth;
+            canvas.height = videoElement.videoHeight;
+
+            // Draw video frame on canvas
+            context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+
+            // Convert canvas to base64 data URL
+            const dataURL = canvas.toDataURL('image/jpeg');
+
+            // Set base64 data URL as value of hidden input
+            document.getElementById('image_data').value = dataURL;
+
+            // Submit the form
+            document.getElementById('upload-form').submit();
+
+            // Stop video stream
+            videoElement.srcObject.getVideoTracks().forEach(track => track.stop());
+        }
+
+        // now detecting license plate results and display it on screen 
+        document.addEventListener('DOMContentLoaded', function () {
+            document.getElementById('detection-form').addEventListener('submit', function (event) {
+                event.preventDefault(); // Prevent the form from submitting normally
+                fetch('/detection', {
+                    method: 'POST',
+                    body: new FormData(this)
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('Success result ------------ :', data.result);
+                        let resultContainer = document.getElementById('result-container');
+                        if (data.error) {
+                            resultContainer.innerHTML = `<p>Error: ${data.error}</p>`;
+                        } else {
+                            resultContainer.innerHTML = `<h2>Result:</h2><p>${data.result}</p>`;
+                        }
+                    })
+                    .catch(error => console.error('Error:', error));
+            });
+        });
+    </script>
+
+</body>
+
+</html>
