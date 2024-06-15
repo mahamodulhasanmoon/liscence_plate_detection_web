@@ -18,6 +18,7 @@ def index():
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], 'input.jpg')
     return render_template('index.html', filepath=filepath)
 
+# Save live imageand uploading that image in uploads folder
 @app.route('/upload', methods=['POST'])
 def upload_file():
     # Get the uploaded image data
@@ -25,7 +26,7 @@ def upload_file():
 
     # Decode the base64 image data
     img_bytes = base64.b64decode(image_data.split(',')[1])
-    print("Image data decoded ------------", img_bytes)
+    # print("Image data decoded ------------", img_bytes)
 
     # Save the decoded image to a file
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], 'input.jpg')
@@ -34,12 +35,14 @@ def upload_file():
 
     # Perform processing on the image (replace this with your own processing logic)
     # For example, you can use OpenCV for image processing
-    print("Image saved at", filepath)
+    # print("Image saved at", filepath)
 
     # Redirect to the result page
-    # return render_template('index.html', filepath=filepath)
-    return redirect('/detection')
+    return render_template('index.html', filepath=filepath)
+    # return redirect('/detection')
 
+
+# delete image from uploads folder here
 @app.route('/delete_image', methods=['POST'])
 def delete_image():
     if request.method == 'POST':
@@ -49,6 +52,8 @@ def delete_image():
             os.remove(image_path)
     return redirect(url_for('index'))
 
+
+# after saving live image applying yolov8 model for croping license plate area.
 @app.route('/detection', methods=['POST'])
 def upload_success():
     # file name is the file name that some one uploaded 
@@ -58,7 +63,7 @@ def upload_success():
         model = YOLO('./static/model/yolov8-custom.pt')
         confidence = 0.6 # 0.0-1.0    # render the message that you wanted to show in message variable
         results = model.predict(source = f"./static/uploads/input.jpg", save = True, show = False, conf = confidence)
-        print(results)
+        # print(results)
 
         img_main = cv2.imread("./static/uploads/input.jpg")
         r = results[0]
@@ -83,8 +88,7 @@ def upload_success():
         return render_template('error.html')
 
 
-
-
+# then finally applying EasyOCR for detection license plate characters.
 @app.route('/easyocr_detection')
 def easyocr_detection():
     try:
@@ -92,26 +96,14 @@ def easyocr_detection():
         reader = easyocr.Reader(['bn'], gpu=False)
         result = reader.readtext("./static/uploads/processed.jpg", detail=0, paragraph=True)
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], 'input.jpg')  # file path of the image to be uploaded
-        print(result)
+        # print(result)
         
         return render_template('index.html', result=result[0], filepath=filepath)
     
     except Exception as e:
         return render_template('error.html')
+    
 
-@app.route('/dmp_fix/')
-def dmp_fix():
-    try:
-        print("Now easy ocr part.")
-        reader = easyocr.Reader(['bn'], gpu = False)
-        result = reader.readtext("./static/uploads/processed.jpg", detail = 0, paragraph = True)
-        print(result)
-        return jsonify(result)
-    except Exception as e :
-        return jsonify(e)
-
-# if __name__ == '__main__':
-#     app.run(debug=True)
 
 if __name__ == '__main__':
-   app.run(host='0.0.0.0', port=5000) # Run the server on a different port than Rasa's
+   app.run(host='0.0.0.0', port=5000) # Backend running on port 5000
